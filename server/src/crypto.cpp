@@ -46,15 +46,31 @@ std::string sha256_file(const std::string &filepath)
     return ss.str();
 }
 
-int main()
+std::string sha256_string(const std::string &data)
 {
-    try
-    {
-        std::string fileHash = sha256_file("example.txt");
-        std::cout << "SHA-256: " << fileHash << std::endl;
-    }
-    catch (const std::exception &e)
-    {
-        std::cerr << e.what() << std::endl;
-    }
+    // Create EVP context
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    if (!ctx)
+        throw std::runtime_error("Failed to create EVP_MD_CTX");
+
+    if (EVP_DigestInit_ex(ctx, EVP_sha256(), nullptr) != 1)
+        throw std::runtime_error("EVP_DigestInit_ex failed");
+
+    if (EVP_DigestUpdate(ctx, data.data(), data.size()) != 1)
+        throw std::runtime_error("EVP_DigestUpdate failed");
+
+    // Finalize hash
+    std::vector<unsigned char> hash(EVP_MD_size(EVP_sha256()));
+    unsigned int length = 0;
+    if (EVP_DigestFinal_ex(ctx, hash.data(), &length) != 1)
+        throw std::runtime_error("EVP_DigestFinal_ex failed");
+
+    EVP_MD_CTX_free(ctx);
+
+    // Convert hash to hex string
+    std::stringstream ss;
+    for (unsigned int i = 0; i < length; ++i)
+        ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
+
+    return ss.str();
 }
